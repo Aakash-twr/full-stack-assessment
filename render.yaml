@@ -2,8 +2,9 @@ services:
   # ── 1. MySQL 8.0 Private Service with Persistent Storage ──────────────────
   - type: pserv
     name: txn-mysql
-    env: docker
-    image: mysql:8.0
+    runtime: image
+    image:
+      url: docker.io/library/mysql:8.0
     plan: starter
     disk:
       name: mysql-data
@@ -11,25 +12,25 @@ services:
       sizeGB: 10
     envVars:
       - key: MYSQL_ROOT_PASSWORD
-        generateValue: true
+        value: root_secret_password_123
       - key: MYSQL_DATABASE
         value: transactions_db
       - key: MYSQL_USER
         value: txn_user
       - key: MYSQL_PASSWORD
-        generateValue: true
+        value: txn_secret_password_123
 
   # ── 2. FastAPI Web API Service ─────────────────────────────────────────────
   - type: web
     name: txn-api
-    env: docker
+    runtime: docker
     dockerfilePath: ./Dockerfile
     dockerCommand: sh -c "alembic upgrade head && uvicorn app.main:app --host 0.0.0.0 --port $PORT"
     healthCheckPath: /
     plan: starter
     envVars:
       - key: DATABASE_URL
-        value: mysql+pymysql://txn_user:txn_password@txn-mysql:3306/transactions_db
+        value: mysql+pymysql://txn_user:txn_secret_password_123@txn-mysql:3306/transactions_db
       - key: PROCESSING_DELAY_SECONDS
         value: "30"
       - key: WORKER_POLL_INTERVAL_SECONDS
@@ -46,13 +47,13 @@ services:
   # ── 3. Asynchronous Background Worker ──────────────────────────────────────
   - type: worker
     name: txn-worker
-    env: docker
+    runtime: docker
     dockerfilePath: ./Dockerfile
     dockerCommand: python -m app.worker.main
     plan: starter
     envVars:
       - key: DATABASE_URL
-        value: mysql+pymysql://txn_user:txn_password@txn-mysql:3306/transactions_db
+        value: mysql+pymysql://txn_user:txn_secret_password_123@txn-mysql:3306/transactions_db
       - key: PROCESSING_DELAY_SECONDS
         value: "30"
       - key: WORKER_POLL_INTERVAL_SECONDS
