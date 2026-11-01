@@ -360,7 +360,7 @@ If an unexpected exception occurs during processing:
 ### Steps:
 ```bash
 # 1. Clone repository
-git clone https://github.com/<your-username>/full-stack-assessment.git
+git clone https://github.com/Aakash-twr/full-stack-assessment.git
 cd full-stack-assessment
 
 # 2. Create virtual environment
@@ -532,6 +532,7 @@ The service is architected to deploy seamlessly to cloud container environments 
 ## 19. Public API URL and Deployment Status
 
 ### Deployment Status:
+- **Public GitHub Repository:** [https://github.com/Aakash-twr/full-stack-assessment](https://github.com/Aakash-twr/full-stack-assessment)
 - **Local / Docker Environment:** Complete and verified with 100% automated test coverage.
 - **Cloud Provider Credentials:** Per specification instructions, no cloud account credentials were provided in the evaluation environment. Fabricating an unverified cloud endpoint is strictly forbidden. Complete deployment blueprints and commands are supplied above.
 
