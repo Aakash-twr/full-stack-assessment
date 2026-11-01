@@ -105,21 +105,20 @@ def _run_one_iteration() -> bool:
     Returns False if the queue was empty (idle iteration).
     """
     db = SessionLocal()
+    txn = None
+    lease_token = None
     try:
         result = processor.claim_next_job(db)
         if result is None:
+            db.rollback()
             return False  # Nothing to do.
 
         txn, lease_token = result
     except Exception as exc:
         logger.error("Error while claiming job: %s", exc, exc_info=True)
-        db.close()
         return False
-
-    # The claim transaction is committed — lock is released.
-    # Close the session used for claiming; open a fresh one for completion.
-    # This prevents the completion update from running in a tainted session.
-    db.close()
+    finally:
+        db.close()
 
     # ── Simulate external payment-processor call ───────────────────────────
     processing_error: Exception | None = None

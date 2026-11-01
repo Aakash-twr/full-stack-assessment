@@ -77,7 +77,7 @@ async def run_load_test(base_url: str, total_requests: int, test_idempotency: bo
     async with httpx.AsyncClient() as client:
         try:
             health_resp = await client.get(f"{base_url.rstrip('/')}/", timeout=5.0)
-            if health_resp.status_code != 200 or health_resp.json().get("database") != "connected":
+            if health_resp.status_code != 200 or health_resp.json().get("status") != "HEALTHY":
                 print(f"❌ Target service not healthy: {health_resp.status_code} - {health_resp.text}")
                 return 1
             print("✔ Service and MySQL connection confirmed healthy.")

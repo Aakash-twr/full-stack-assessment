@@ -27,7 +27,7 @@ services:
       dockerfile: Dockerfile
     container_name: txn_migrate
     restart: "no"
-    command: ["alembic", "upgrade", "head"]
+    command: ["sh", "-c", "until alembic upgrade head; do echo 'Waiting for MySQL to accept connections...'; sleep 2; done"]
     environment:
       DATABASE_URL: mysql+pymysql://txn_user:txn_password@mysql:3306/transactions_db
       LOG_LEVEL: INFO
