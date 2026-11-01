@@ -1,0 +1,90 @@
+services:
+  # ── 1. MySQL 8.0 Database ──────────────────────────────────────────────────
+  mysql:
+    image: mysql:8.0
+    container_name: txn_mysql
+    restart: unless-stopped
+    environment:
+      MYSQL_ROOT_PASSWORD: root_password
+      MYSQL_DATABASE: transactions_db
+      MYSQL_USER: txn_user
+      MYSQL_PASSWORD: txn_password
+    ports:
+      - "3306:3306"
+    volumes:
+      - mysql_data:/var/lib/mysql
+    healthcheck:
+      test: ["CMD-SHELL", "mysqladmin ping -h localhost -u root -proot_password"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+      start_period: 15s
+
+  # ── 2. Database Migrations (One-off) ───────────────────────────────────────
+  migrate:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: txn_migrate
+    restart: "no"
+    command: ["alembic", "upgrade", "head"]
+    environment:
+      DATABASE_URL: mysql+pymysql://txn_user:txn_password@mysql:3306/transactions_db
+      LOG_LEVEL: INFO
+    depends_on:
+      mysql:
+        condition: service_healthy
+
+  # ── 3. FastAPI Web Application ─────────────────────────────────────────────
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: txn_api
+    restart: unless-stopped
+    command: ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]
+    ports:
+      - "8000:8000"
+    environment:
+      DATABASE_URL: mysql+pymysql://txn_user:txn_password@mysql:3306/transactions_db
+      PROCESSING_DELAY_SECONDS: "30"
+      WORKER_POLL_INTERVAL_SECONDS: "1"
+      JOB_LEASE_SECONDS: "120"
+      MAX_ATTEMPTS: "5"
+      RETRY_BASE_DELAY_SECONDS: "5"
+      PORT: "8000"
+      LOG_LEVEL: INFO
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:8000/ || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+
+  # ── 4. Asynchronous Background Worker ──────────────────────────────────────
+  worker:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: txn_worker
+    restart: unless-stopped
+    command: ["python", "-m", "app.worker.main"]
+    environment:
+      DATABASE_URL: mysql+pymysql://txn_user:txn_password@mysql:3306/transactions_db
+      PROCESSING_DELAY_SECONDS: "30"
+      WORKER_POLL_INTERVAL_SECONDS: "1"
+      JOB_LEASE_SECONDS: "120"
+      MAX_ATTEMPTS: "5"
+      RETRY_BASE_DELAY_SECONDS: "5"
+      PORT: "8000"
+      LOG_LEVEL: INFO
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+
+volumes:
+  mysql_data:
+    driver: local
